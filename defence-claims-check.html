@@ -1,0 +1,1112 @@
+<title>Defence Claims Check</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: a case-file desk. Sticky nav, a 1120px column, evidence cards that carry case numbers and ink-stamp verdicts. Yellow highlighter is the one loud device. */
+:root{
+  --bg:#F0F3F2; --surface:#FFFFFF; --surface-2:#E6EBE9; --fg:#14201D; --muted:#52605C; --line:#C9D2CF;
+  --accent:#0B4F6C; --mark:#FFE45C; --mark-ink:#14201D;
+  --v-false:#B42318; --v-misleading:#9A5700; --v-verified:#17703A; --v-unproven:#47568A;
+  --banner-bg:#14201D; --banner-fg:#E8F0ED;
+  --font-display:'Archivo','Arial Narrow',Arial,sans-serif;
+  --font-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1514; --surface:#162120; --surface-2:#1D2B29; --fg:#E7EFEC; --muted:#9DAEA9; --line:#2B3C39;
+    --accent:#7CCBE4; --mark:#FFE45C; --mark-ink:#14201D;
+    --v-false:#FF9188; --v-misleading:#F2B45E; --v-verified:#62D690; --v-unproven:#A4B5F2;
+    --banner-bg:#050908; --banner-fg:#C9D8D3; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1514; --surface:#162120; --surface-2:#1D2B29; --fg:#E7EFEC; --muted:#9DAEA9; --line:#2B3C39;
+  --accent:#7CCBE4; --mark:#FFE45C; --mark-ink:#14201D;
+  --v-false:#FF9188; --v-misleading:#F2B45E; --v-verified:#62D690; --v-unproven:#A4B5F2;
+  --banner-bg:#050908; --banner-fg:#C9D8D3; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.6;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:800;font-stretch:112%;line-height:1.08;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h1{font-size:clamp(2.1rem,5.6vw,3.7rem);letter-spacing:-.02em}
+h2{font-size:clamp(1.45rem,3vw,2rem)}
+h3{font-size:1.2rem;font-stretch:104%}
+h4{font-size:1rem;font-stretch:100%}
+p{margin:0}
+a{color:var(--accent)}
+.mono{font-family:var(--font-mono);font-size:.8125rem;letter-spacing:.02em}
+.label{font-family:var(--font-mono);font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hl{background:var(--mark);color:var(--mark-ink);padding:0 .14em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;left:-9999px;top:8px;background:var(--fg);color:var(--bg);padding:8px 14px;border:0;border-radius:4px;font:inherit;z-index:40}
+.skip:focus{left:16px}
+
+/* verdict colour hooks */
+.v-false{--vc:var(--v-false)} .v-misleading{--vc:var(--v-misleading)} .v-verified{--vc:var(--v-verified)} .v-unproven{--vc:var(--v-unproven)}
+.stamp{display:inline-flex;gap:.4em;align-items:center;font-family:var(--font-mono);font-weight:500;font-size:.8125rem;letter-spacing:.14em;text-transform:uppercase;color:var(--vc);border:2px solid var(--vc);border-radius:3px;padding:3px 10px;transform:rotate(-2.5deg);white-space:nowrap;background:color-mix(in srgb,var(--vc) 9%,var(--surface))}
+.stamp.sm{font-size:.6875rem;padding:2px 7px;transform:none;letter-spacing:.12em}
+
+/* banner + header */
+.banner{background:var(--banner-bg);color:var(--banner-fg);border-bottom:1px solid var(--line)}
+.banner p{font-family:var(--font-mono);font-size:.75rem;line-height:1.5;padding-block:9px}
+.site-head{position:sticky;top:env(safe-area-inset-top,0px);z-index:31;background:var(--bg);border-bottom:1.5px solid var(--fg)}
+.head-in{display:flex;flex-wrap:wrap;align-items:center;gap:6px 20px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--fg)}
+.brand svg{flex:none}
+.brand .bm-box{fill:none;stroke:currentColor;stroke-width:2}
+.brand .bm-bar{fill:var(--mark)}
+.brand .bm-line{fill:currentColor}
+.brand-name{font-family:var(--font-display);font-weight:800;font-stretch:118%;font-size:1.1rem;letter-spacing:-.01em;line-height:1}
+.brand .tag{font-family:var(--font-mono);font-size:.625rem;letter-spacing:.14em;text-transform:uppercase;border:1px solid var(--muted);color:var(--muted);padding:1px 6px;border-radius:3px}
+.nav{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav ul{display:flex;gap:2px;list-style:none;margin:0;padding:0;justify-content:flex-end}
+.nav a{display:block;white-space:nowrap;text-decoration:none;color:var(--fg);font-weight:500;font-size:.9375rem;padding:6px 11px;border-radius:3px}
+.nav a:hover{background:var(--surface-2)}
+.nav a[aria-current="page"]{background:var(--mark);color:var(--mark-ink);font-weight:600}
+.icon-btn{font:inherit;font-size:.8125rem;font-weight:500;color:var(--fg);background:transparent;border:1.5px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer}
+.icon-btn:hover{border-color:var(--fg)}
+@media (max-width:760px){.nav{order:3;flex-basis:100%}.nav ul{justify-content:flex-start}}
+
+/* buttons, fields */
+.btn{font:inherit;font-weight:600;font-size:.9375rem;padding:.7rem 1.15rem;border-radius:5px;border:1.5px solid var(--fg);background:var(--fg);color:var(--bg);cursor:pointer;text-decoration:none;display:inline-block;transition:transform .12s}
+.btn:hover{transform:translateY(-1px)}
+.btn.ghost{background:transparent;color:var(--fg)}
+.btn.small{padding:.4rem .8rem;font-size:.8125rem}
+.btn-row{display:flex;flex-wrap:wrap;gap:10px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label,.field .lbl{font-weight:600;font-size:.9375rem}
+.field .hint{font-size:.8125rem;color:var(--muted)}
+input[type=text],input[type=search],input[type=url],input[type=email],input[type=date],select,textarea{font:inherit;font-size:1rem;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:5px;padding:.6rem .75rem;width:100%;min-width:0}
+textarea{resize:vertical;line-height:1.5}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:1px;border-color:var(--fg)}
+.err{color:var(--v-false);font-size:.875rem;font-weight:500}
+input[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--v-false)}
+.checkbox{display:flex;gap:10px;align-items:flex-start}
+.checkbox input{width:20px;height:20px;margin-top:2px;flex:none;accent-color:var(--fg)}
+
+/* page frame */
+.page{padding-block:44px 72px}
+.page-head{display:flex;flex-direction:column;gap:14px;max-width:760px;margin-bottom:32px}
+.page-head p.lede{font-size:1.125rem;color:var(--muted)}
+.section{margin-top:56px}
+.section>h2{margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+@media (max-width:860px){.grid-2{grid-template-columns:minmax(0,1fr)}}
+
+/* home hero */
+.hero{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,1fr);gap:48px;align-items:center}
+.hero-copy{display:flex;flex-direction:column;gap:22px}
+.hero-copy .lede{font-size:1.1875rem;color:var(--muted);max-width:34em}
+.hero-note{font-family:var(--font-mono);font-size:.8125rem;color:var(--muted);max-width:40em}
+@media (max-width:900px){.hero{grid-template-columns:minmax(0,1fr);gap:36px}}
+
+/* spotlight */
+.spot{border:2px solid var(--fg);border-radius:8px;background:var(--surface);box-shadow:7px 7px 0 var(--mark)}
+.spot-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1.5px solid var(--fg);flex-wrap:wrap}
+.spot-ctl{display:flex;gap:6px;align-items:center}
+.spot-ctl button{font:inherit;font-size:.8125rem;font-weight:500;min-width:34px;height:32px;padding:0 10px;border:1.5px solid var(--line);background:var(--bg);color:var(--fg);border-radius:4px;cursor:pointer}
+.spot-ctl button:hover{border-color:var(--fg)}
+.slides{display:grid}
+.slide{grid-area:1/1;visibility:hidden;opacity:0;transition:opacity .3s;padding:18px 16px 8px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.slide.on{visibility:visible;opacity:1}
+.sbox{border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.sbox.claim{background:var(--surface-2)}
+.sbox.claim q{quotes:"\201C" "\201D";font-size:1.0625rem;line-height:1.45;font-weight:500}
+.sbox.fact{border:1.5px dashed var(--vc)}
+.sbox .row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.spot-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 16px 14px;flex-wrap:wrap}
+.dots{display:flex;gap:6px;padding:0 16px 16px}
+.dots button{width:26px;height:8px;border:0;border-radius:2px;background:var(--line);cursor:pointer;padding:0}
+.dots button[aria-current="true"]{background:var(--fg)}
+@media (prefers-reduced-motion:reduce){.slide,.btn{transition:none}}
+
+/* stats */
+.bar{display:flex;gap:3px;height:16px}
+.bar span{display:block;background:var(--vc);border-radius:2px;min-width:6px}
+.legend{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:16px}
+.legend button{font:inherit;display:flex;align-items:center;gap:8px;background:none;border:0;padding:4px 0;color:var(--fg);cursor:pointer;text-align:left}
+.legend .dot{width:12px;height:12px;border-radius:2px;background:var(--vc);flex:none}
+.legend .n{font-family:var(--font-mono);font-weight:500}
+.legend button:hover .lt{text-decoration:underline}
+.latest{list-style:none;margin:24px 0 0;padding:0;display:flex;flex-direction:column;border-top:1.5px solid var(--fg)}
+.latest li{border-bottom:1px solid var(--line)}
+.latest button{font:inherit;color:inherit;width:100%;text-align:left;background:none;border:0;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 16px;align-items:center;padding:14px 4px}
+.latest button:hover{background:var(--surface-2)}
+.latest .t{min-width:0}
+@media (max-width:640px){.latest button{grid-template-columns:minmax(0,1fr) auto}.latest .when{display:none}}
+
+.habits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:1.5px solid var(--fg)}
+.habits>div{padding:20px 24px 4px 0;display:flex;flex-direction:column;gap:8px}
+.habits>div+div{border-left:1px solid var(--line);padding-left:24px}
+@media (max-width:760px){.habits{grid-template-columns:minmax(0,1fr)}.habits>div{padding:18px 0}.habits>div+div{border-left:0;border-top:1px solid var(--line);padding-left:0}}
+
+/* archive */
+.toolbar{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:end}
+@media (max-width:760px){.toolbar{grid-template-columns:minmax(0,1fr)}}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.chip{font:inherit;font-size:.875rem;font-weight:500;display:inline-flex;gap:8px;align-items:center;padding:6px 12px;background:var(--surface);color:var(--fg);border:1.5px solid var(--line);border-radius:4px;cursor:pointer}
+.chip .n{font-family:var(--font-mono);font-size:.75rem;color:var(--muted)}
+.chip:hover{border-color:var(--fg)}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.chip[aria-pressed="true"] .n{color:inherit}
+.chip .sw{width:10px;height:10px;border-radius:2px;background:var(--vc)}
+.result-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:22px 0 14px;min-height:32px}
+.check-list{display:flex;flex-direction:column;gap:12px}
+.check{background:var(--surface);border:1px solid var(--line);border-radius:8px;scroll-margin-top:130px}
+.check[open]{border-color:var(--fg)}
+.check summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px;padding:16px 18px;align-items:center}
+.check summary::-webkit-details-marker{display:none}
+.check summary:hover{background:var(--surface-2);border-radius:8px}
+.c-meta{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--muted);font-size:.8125rem}
+.c-claim{grid-column:1;font-weight:500;font-size:1.0625rem;line-height:1.45}
+.chev{grid-column:2;grid-row:2;justify-self:end;width:10px;height:10px;border-right:2px solid var(--fg);border-bottom:2px solid var(--fg);transform:rotate(45deg);margin:0 4px 4px 0;transition:transform .15s}
+.check[open] .chev{transform:rotate(-135deg);margin:4px 4px 0 0}
+.c-body{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:28px;padding:20px 18px 22px;border-top:1px solid var(--line)}
+.c-body h4{margin-bottom:8px;font-family:var(--font-mono);font-weight:500;font-stretch:100%;font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.c-body ul,.c-body ol{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+.c-body .stack{display:flex;flex-direction:column;gap:20px;min-width:0}
+.c-body dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:.9375rem}
+.c-body dt{color:var(--muted)}
+.c-body dd{margin:0}
+.sample-note{font-family:var(--font-mono);font-size:.75rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px;grid-column:1/-1}
+@media (max-width:760px){.c-body{grid-template-columns:minmax(0,1fr)}}
+mark.hit{background:var(--mark);color:var(--mark-ink);padding:0 2px}
+.empty{padding:40px 24px;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center}
+
+/* verify */
+.stepper{display:grid;grid-template-columns:260px minmax(0,1fr);gap:32px;align-items:start}
+.steps{display:flex;flex-direction:column;gap:6px}
+.step{font:inherit;text-align:left;display:flex;gap:12px;align-items:center;padding:12px 14px;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:5px;cursor:pointer;font-weight:600}
+.step .no{font-family:var(--font-mono);font-size:.8125rem;width:26px;height:26px;border:1.5px solid currentColor;border-radius:3px;display:grid;place-items:center;flex:none}
+.step:hover{border-color:var(--fg)}
+.step[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.step-panel{padding:26px 28px;display:flex;flex-direction:column;gap:14px}
+.step-panel .out{font-family:var(--font-mono);font-size:.8125rem;border-top:1px dashed var(--line);padding-top:14px;color:var(--muted)}
+@media (max-width:820px){.stepper{grid-template-columns:minmax(0,1fr)}.steps{flex-direction:row;overflow-x:auto;padding-bottom:4px}.step{flex:none}}
+.scale{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.scale .card{padding:20px;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.scale p{font-size:.9375rem}
+
+/* spot page */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--fg);overflow-x:auto;margin-bottom:28px}
+.tab{font:inherit;font-weight:600;white-space:nowrap;padding:10px 18px;background:transparent;color:var(--fg);border:0;border-radius:4px 4px 0 0;cursor:pointer}
+.tab:hover{background:var(--surface-2)}
+.tab[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+.analyser{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:860px){.analyser{grid-template-columns:minmax(0,1fr)}}
+.analyser .col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.meter{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
+.meter span{height:14px;border-radius:2px;background:var(--surface-2);border:1px solid var(--line)}
+.meter span.f{background:var(--vc);border-color:var(--vc)}
+.level{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.level strong{font-family:var(--font-display);font-stretch:112%;font-weight:800;font-size:1.35rem}
+.sig-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.sig{padding:14px 16px;display:flex;flex-direction:column;gap:4px;border-left:4px solid var(--vc);border-radius:4px;background:var(--surface);border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.sig b{font-weight:600}
+.sig .found{font-family:var(--font-mono);font-size:.8125rem;color:var(--muted);overflow-wrap:anywhere}
+.clear-list{display:flex;flex-wrap:wrap;gap:6px}
+.clear-list span{font-size:.8125rem;color:var(--muted);border:1px dashed var(--line);border-radius:3px;padding:2px 8px}
+.caveat{font-size:.875rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px}
+.checklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;max-width:760px}
+.checklist label{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;cursor:pointer;background:var(--surface);border:1.5px solid var(--line);border-radius:6px}
+.checklist label:hover{border-color:var(--fg)}
+.checklist input{width:22px;height:22px;margin-top:2px;flex:none;accent-color:var(--fg)}
+.checklist input:checked + .ct b{text-decoration:line-through;text-decoration-thickness:2px}
+.checklist .ct{display:flex;flex-direction:column;gap:3px;min-width:0}
+.checklist .ct span{color:var(--muted);font-size:.9375rem}
+.progress{max-width:760px;margin-bottom:18px;display:flex;flex-direction:column;gap:8px}
+.progress .track{height:10px;border:1.5px solid var(--fg);border-radius:3px;overflow:hidden}
+.progress .fill{height:100%;background:var(--mark);width:0;transition:width .25s}
+.quiz{max-width:760px;padding:26px 28px;display:flex;flex-direction:column;gap:18px}
+.opts{display:flex;flex-direction:column;gap:10px}
+.opt{font:inherit;text-align:left;padding:13px 16px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);cursor:pointer;display:flex;gap:12px}
+.opt:hover:not(:disabled){border-color:var(--fg)}
+.opt .k{font-family:var(--font-mono);font-weight:500;flex:none}
+.opt.right{border-color:var(--v-verified);background:color-mix(in srgb,var(--v-verified) 12%,var(--surface))}
+.opt.wrong{border-color:var(--v-false);background:color-mix(in srgb,var(--v-false) 10%,var(--surface))}
+.opt:disabled{cursor:default;color:var(--fg)}
+.explain{padding:14px 16px;border-radius:6px;background:var(--surface-2);font-size:.9375rem;display:flex;flex-direction:column;gap:6px}
+.tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.tools .card{padding:18px;display:flex;flex-direction:column;gap:6px}
+
+/* submit + about */
+.form-card{padding:28px;display:flex;flex-direction:column;gap:20px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:640px){.form-grid{grid-template-columns:minmax(0,1fr)}.form-card{padding:20px}}
+.aside{display:flex;flex-direction:column;gap:18px;min-width:0}
+.aside .card{padding:20px;display:flex;flex-direction:column;gap:8px}
+.receipt{padding:28px;display:flex;flex-direction:column;gap:18px;border:2px solid var(--fg)}
+.receipt dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 18px}
+.receipt dt{color:var(--muted)}
+.receipt dd{margin:0;overflow-wrap:anywhere}
+.addr{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
+.prose{max-width:720px;display:flex;flex-direction:column;gap:16px}
+.prose h2{margin-top:20px}
+.ticks{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:8px}
+.status{font-size:.875rem;color:var(--muted);min-height:1.4em}
+
+/* footer */
+.foot{border-top:1.5px solid var(--fg);padding-block:32px 48px;display:flex;flex-direction:column;gap:18px}
+.foot p{max-width:720px;font-size:.875rem;color:var(--muted)}
+.foot ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 20px}
+.foot a{color:var(--fg);font-weight:500;font-size:.9375rem}
+</style>
+
+<button class="skip" type="button" id="skip">Skip to content</button>
+
+<div class="banner" role="note">
+  <div class="wrap">
+    <p>SAMPLE SITE. Independent. Not affiliated with any army, ministry or government body. Every claim, place, person and verdict shown here is invented demo content.</p>
+  </div>
+</div>
+
+<header class="site-head">
+  <div class="wrap head-in">
+    <a class="brand" href="#home" data-go="home" aria-label="Defence Claims Check, home">
+      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+        <rect class="bm-box" x="3" y="3" width="24" height="24" rx="2"/>
+        <rect class="bm-line" x="8" y="8" width="14" height="2.5"/>
+        <rect class="bm-bar" x="7" y="13" width="16" height="6"/>
+        <rect class="bm-line" x="8" y="21.5" width="9" height="2.5"/>
+      </svg>
+      <span class="brand-name">Defence Claims Check</span>
+      <span class="tag">Sample</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <ul>
+        <li><a href="#home" data-go="home" data-nav="home">Home</a></li>
+        <li><a href="#archive" data-go="archive" data-nav="archive">Archive</a></li>
+        <li><a href="#verify" data-go="verify" data-nav="verify">How we verify</a></li>
+        <li><a href="#spot" data-go="spot" data-nav="spot">Spot fake claims</a></li>
+        <li><a href="#submit" data-go="submit" data-nav="submit">Submit a claim</a></li>
+        <li><a href="#about" data-go="about" data-nav="about">About</a></li>
+      </ul>
+    </nav>
+    <button class="icon-btn" id="theme-btn" type="button">Theme</button>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+
+<!-- HOME -->
+<section class="page" data-page="home" hidden>
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-copy">
+        <span class="label">Independent sample · invented content</span>
+        <h1>Check the <span class="hl">claim</span> before you share it.</h1>
+        <p class="lede">Defence Claims Check is a sample of an independent fact-checking site for viral claims about armed forces. Browse the demo archive, test a forwarded message, or take the verification quiz.</p>
+        <div class="btn-row">
+          <a class="btn" href="#archive" data-go="archive">Browse the archive</a>
+          <a class="btn ghost" href="#spot" data-go="spot">Test a message</a>
+        </div>
+        <p class="hero-note">No real army, person, event or social post is rated on this site.</p>
+      </div>
+
+      <div class="spot" id="spotlight" aria-roledescription="carousel" aria-label="Claim versus fact spotlight">
+        <div class="spot-top">
+          <span class="label" style="color:var(--fg)">Claim vs fact · <span id="spot-count">1 of 5</span></span>
+          <div class="spot-ctl">
+            <button type="button" id="spot-prev" aria-label="Previous check">&lsaquo;</button>
+            <button type="button" id="spot-pause" aria-pressed="false">Pause</button>
+            <button type="button" id="spot-next" aria-label="Next check">&rsaquo;</button>
+          </div>
+        </div>
+        <div class="slides" id="slides" aria-live="off"></div>
+        <div class="dots" id="dots"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 id="glance-h">The sample archive at a glance</h2>
+      <p class="muted" id="glance-sub" style="margin-bottom:18px"></p>
+      <div class="bar" id="verdict-bar" role="img" aria-label="Share of sample checks by verdict"></div>
+      <div class="legend" id="legend"></div>
+      <ul class="latest" id="latest"></ul>
+      <div class="btn-row" style="margin-top:22px"><a class="btn ghost" href="#archive" data-go="archive">See all checks</a></div>
+    </div>
+
+    <div class="section">
+      <h2>Three habits that stop most hoaxes</h2>
+      <div class="habits" style="margin-top:18px">
+        <div><h3>Pause</h3><p class="muted">Alarming messages are built to be forwarded within seconds. Notice the urge, then wait before you act on it.</p></div>
+        <div><h3>Trace</h3><p class="muted">Find who posted it first and whether a notice, a transcript or a full recording exists. A screenshot of a screenshot is not a source.</p></div>
+        <div><h3>Cross-check</h3><p class="muted">Look for the same claim on the organisation's own website and in other outlets before you decide it is true.</p></div>
+      </div>
+      <div class="btn-row" style="margin-top:24px">
+        <a class="btn" href="#spot" data-go="spot">Learn the 7-step check</a>
+        <a class="btn ghost" href="#submit" data-go="submit">Submit a claim to check</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHIVE -->
+<section class="page" data-page="archive" hidden>
+  <div class="wrap">
+    <div class="page-head">
+      <span class="label">Archive · sample data</span>
+      <h1>Fact-check archive</h1>
+      <p class="lede">Twelve invented checks that show how a verdict, an evidence trail and sources can be laid out. Search, filter by verdict or topic, and open any card.</p>
+    </div>
+
+    <div class="toolbar">
+      <div class="field"><label for="q">Search</label><input type="search" id="q" placeholder="Try &quot;pension&quot;, &quot;photo&quot; or &quot;leaked&quot;" autocomplete="off"></div>
+      <div class="field"><label for="topic">Topic</label><select id="topic"></select></div>
+      <div class="field"><label for="sort">Sort by</label>
+        <select id="sort"><option value="new">Newest first</option><option value="old">Oldest first</option></select>
+      </div>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Filter by verdict"></div>
+    <div class="result-bar">
+      <p class="muted" id="count" aria-live="polite"></p>
+      <button class="btn ghost small" type="button" id="clear" hidden>Clear filters</button>
+    </div>
+    <div class="check-list" id="list"></div>
+    <div class="card empty" id="empty" hidden>
+      <h3>No checks match</h3>
+      <p class="muted">Try a shorter search word, or remove a filter.</p>
+      <button class="btn" type="button" id="empty-clear">Clear filters</button>
+    </div>
+  </div>
+</section>
+
+<!-- HOW WE VERIFY -->
+<section class="page" data-page="verify" hidden>
+  <div class="wrap">
+    <div class="page-head">
+      <span class="label">Method · this is the sample organisation's process</span>
+      <h1>How we verify</h1>
+      <p class="lede">Every check follows the same five stages, and every verdict has a published meaning. Replace this process with your own when you adapt the site.</p>
+    </div>
+
+    <div class="stepper">
+      <div class="steps" role="tablist" aria-orientation="vertical" aria-label="Verification stages" id="steps">
+        <button class="step" role="tab" id="st1" aria-controls="sp1" aria-selected="true" type="button"><span class="no">1</span>Intake</button>
+        <button class="step" role="tab" id="st2" aria-controls="sp2" aria-selected="false" tabindex="-1" type="button"><span class="no">2</span>Triage</button>
+        <button class="step" role="tab" id="st3" aria-controls="sp3" aria-selected="false" tabindex="-1" type="button"><span class="no">3</span>Evidence</button>
+        <button class="step" role="tab" id="st4" aria-controls="sp4" aria-selected="false" tabindex="-1" type="button"><span class="no">4</span>Second review</button>
+        <button class="step" role="tab" id="st5" aria-controls="sp5" aria-selected="false" tabindex="-1" type="button"><span class="no">5</span>Publish and correct</button>
+      </div>
+      <div>
+        <div class="card step-panel" role="tabpanel" id="sp1" aria-labelledby="st1">
+          <h2>Intake</h2>
+          <p>Claims reach us from readers, from the submit form and from our own monitoring of public posts. Each claim gets a case number and a saved copy: a screenshot and the link, with the date and time we captured it, so the claim cannot change under us.</p>
+          <p>We log where it appeared, who posted it first as far as we can tell, and how far it has spread.</p>
+          <p class="out">Output: case file with captured copy</p>
+        </div>
+        <div class="card step-panel" role="tabpanel" id="sp2" aria-labelledby="st2" hidden>
+          <h2>Triage</h2>
+          <p>We take claims that are specific, checkable and harmful if believed: false alerts, forged notices, doctored images, clipped quotes. We skip opinions, jokes and predictions, because no evidence can settle them.</p>
+          <p>Claims that could put people at immediate risk, such as a false road closure or a false evacuation order, move to the front of the queue.</p>
+          <p class="out">Output: accept or decline, with the reason recorded</p>
+        </div>
+        <div class="card step-panel" role="tabpanel" id="sp3" aria-labelledby="st3" hidden>
+          <h2>Evidence</h2>
+          <p>We look for the primary source: the notice, the full recording, the statement, the dataset. For images and video we run reverse searches, read metadata, compare frames and check location, weather and shadows against the stated date.</p>
+          <p>We ask the organisation concerned for comment and record whether it replied and when. Every source is saved with a date.</p>
+          <p class="out">Output: evidence trail a reader could repeat</p>
+        </div>
+        <div class="card step-panel" role="tabpanel" id="sp4" aria-labelledby="st4" hidden>
+          <h2>Second review</h2>
+          <p>An editor who did not do the check reads the evidence trail and tries to break the conclusion. They look for a missing source, a leap in logic and a verdict that claims more than the evidence supports.</p>
+          <p>If the two cannot agree on a verdict, the check is rated Unproven or sent back for more evidence.</p>
+          <p class="out">Output: verdict approved or returned</p>
+        </div>
+        <div class="card step-panel" role="tabpanel" id="sp5" aria-labelledby="st5" hidden>
+          <h2>Publish and correct</h2>
+          <p>We publish the claim, the verdict, the evidence and the sources. Each check shows when it was last updated. Corrections appear at the bottom of the check and are never made silently.</p>
+          <p>Unproven checks are reopened when new evidence appears.</p>
+          <p class="out">Output: published check with update history</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>What each verdict means</h2>
+      <div class="scale">
+        <div class="card v-false"><span class="stamp">&#x2715; False</span><p>The evidence contradicts the claim. A reliable source or a direct record shows the opposite.</p></div>
+        <div class="card v-misleading"><span class="stamp">~ Misleading</span><p>Something true has been cropped, relabelled or framed so that people draw a wrong conclusion.</p></div>
+        <div class="card v-verified"><span class="stamp">&#x2713; Verified</span><p>Independent evidence confirms the claim, usually a primary source we could check ourselves.</p></div>
+        <div class="card v-unproven"><span class="stamp">? Unproven</span><p>There is not enough evidence to confirm or reject the claim. We say what is missing.</p></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="grid-2">
+        <div class="prose"><h2 style="margin-top:0">What we do not do</h2>
+          <ul class="ticks"><li>We do not rate opinions, satire or predictions.</li><li>We do not publish unit locations or details that could put people at risk.</li><li>We do not speculate about who is behind a claim without evidence.</li></ul>
+        </div>
+        <div class="prose"><h2 style="margin-top:0">Corrections</h2>
+          <p>If we get something wrong, we change the check, add a dated correction note at the bottom and change the verdict if the evidence requires it. Report an error from the <a href="#about" data-go="about">About page</a>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SPOT FAKE CLAIMS -->
+<section class="page" data-page="spot" hidden>
+  <div class="wrap">
+    <div class="page-head">
+      <span class="label">Tools · run in your browser</span>
+      <h1>Spot fake claims</h1>
+      <p class="lede">Paste a forwarded message to see which warning signs it shows, work through the seven-step check, or test yourself with the quiz.</p>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Tools" id="spot-tabs">
+      <button class="tab" role="tab" id="tb1" aria-controls="tp1" aria-selected="true" type="button">Message analyser</button>
+      <button class="tab" role="tab" id="tb2" aria-controls="tp2" aria-selected="false" tabindex="-1" type="button">7-step check</button>
+      <button class="tab" role="tab" id="tb3" aria-controls="tp3" aria-selected="false" tabindex="-1" type="button">Quiz</button>
+    </div>
+
+    <div role="tabpanel" id="tp1" aria-labelledby="tb1">
+      <div class="analyser">
+        <div class="col">
+          <div class="field">
+            <label for="msg">Paste a message</label>
+            <textarea id="msg" rows="9" spellcheck="false"></textarea>
+            <span class="hint">Runs only in your browser. Nothing is sent anywhere.</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn small ghost" type="button" data-example="chain">Example: chain message</button>
+            <button class="btn small ghost" type="button" data-example="notice">Example: official-style notice</button>
+            <button class="btn small ghost" type="button" data-example="clear">Clear</button>
+          </div>
+          <p class="hint muted" style="font-size:.8125rem">Both examples are invented for this demo.</p>
+        </div>
+        <div class="col" id="analysis" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="tp2" aria-labelledby="tb2" hidden>
+      <div class="progress">
+        <div class="level"><strong id="cl-title">0 of 7 done</strong><span class="muted" id="cl-msg" style="font-size:.9375rem"></span></div>
+        <div class="track"><div class="fill" id="cl-fill"></div></div>
+      </div>
+      <ul class="checklist" id="checklist"></ul>
+
+      <div class="section">
+        <h2>Where to cross-check</h2>
+        <div class="tools">
+          <div class="card"><h3>Reverse image search</h3><p class="muted">Find earlier copies of a photo or a video frame.</p><p><a href="https://tineye.com" target="_blank" rel="noopener">TinEye</a> · <a href="https://lens.google.com" target="_blank" rel="noopener">Google Lens</a></p></div>
+          <div class="card"><h3>Web archive</h3><p class="muted">See what a page said before it was edited or removed.</p><p><a href="https://web.archive.org" target="_blank" rel="noopener">Wayback Machine</a></p></div>
+          <div class="card"><h3>Existing fact-checks</h3><p class="muted">Search whether other fact-checkers have already rated the claim.</p><p><a href="https://toolbox.google.com/factcheck/explorer" target="_blank" rel="noopener">Google Fact Check Explorer</a></p></div>
+          <div class="card"><h3>Official sources</h3><p class="muted">Go to the body's own website, not to a screenshot of it.</p><p><a href="https://pib.gov.in" target="_blank" rel="noopener">pib.gov.in</a> · <a href="https://mod.gov.in" target="_blank" rel="noopener">mod.gov.in</a></p></div>
+        </div>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="tp3" aria-labelledby="tb3" hidden>
+      <div class="card quiz" id="quiz"></div>
+    </div>
+  </div>
+</section>
+
+<!-- SUBMIT -->
+<section class="page" data-page="submit" hidden>
+  <div class="wrap">
+    <div class="page-head">
+      <span class="label">Demo form · nothing is sent</span>
+      <h1>Submit a claim to check</h1>
+      <p class="lede">Tell us what you saw and where. A live site would put this in a review queue. In this sample the form stays in your browser and shows you the receipt a reader would get.</p>
+    </div>
+
+    <div class="grid-2" style="grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);align-items:start" id="submit-grid">
+      <div>
+        <form class="card form-card" id="claim-form" novalidate>
+          <div class="field">
+            <label for="claim-text">The claim</label>
+            <textarea id="claim-text" rows="5" aria-describedby="claim-hint err-claim" placeholder="Copy the text exactly as you saw it, or describe the image or video."></textarea>
+            <span class="hint" id="claim-hint">At least 15 characters. Quote it as written.</span>
+            <p class="err" id="err-claim" role="alert" hidden></p>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="claim-where">Where did you see it?</label>
+              <select id="claim-where">
+                <option>Messaging app forward</option>
+                <option>Social media post</option>
+                <option>Video platform</option>
+                <option>News site or blog</option>
+                <option>Screenshot of a document</option>
+                <option>Somewhere else</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="claim-date">Date you saw it</label>
+              <input type="date" id="claim-date">
+            </div>
+          </div>
+          <div class="field">
+            <label for="claim-url">Link, if there is one</label>
+            <input type="url" id="claim-url" placeholder="https://" aria-describedby="err-url" autocomplete="off">
+            <p class="err" id="err-url" role="alert" hidden></p>
+          </div>
+          <div class="field">
+            <label for="claim-email">Your email, if you want a reply (optional)</label>
+            <input type="email" id="claim-email" placeholder="name@example.org" autocomplete="off" aria-describedby="err-email">
+            <p class="err" id="err-email" role="alert" hidden></p>
+          </div>
+          <div>
+            <div class="checkbox">
+              <input type="checkbox" id="claim-ack" aria-describedby="err-ack">
+              <label for="claim-ack">I understand this is a sample form and nothing will be sent or stored.</label>
+            </div>
+            <p class="err" id="err-ack" role="alert" hidden style="margin-top:6px"></p>
+          </div>
+          <div class="btn-row"><button class="btn" type="submit">Generate sample receipt</button></div>
+        </form>
+
+        <div class="card receipt" id="receipt" hidden>
+          <span class="label">Sample receipt</span>
+          <h2>This is what you would receive.</h2>
+          <dl id="receipt-dl"></dl>
+          <p class="muted">Nothing was sent. This ticket exists only on this screen.</p>
+          <div class="btn-row">
+            <button class="btn" type="button" id="receipt-copy">Copy summary</button>
+            <button class="btn ghost" type="button" id="receipt-reset">Submit another</button>
+          </div>
+          <p class="status" id="receipt-status" role="status"></p>
+        </div>
+      </div>
+
+      <div class="aside">
+        <div class="card"><h3>What makes a claim checkable</h3>
+          <ul class="ticks"><li>It states something specific: a place, a date, a number.</li><li>It can be compared with a record, a recording or a notice.</li><li>It is going around now, so a check helps.</li></ul>
+        </div>
+        <div class="card"><h3>Before you submit</h3>
+          <p class="muted">Do not include personal details of private people, and do not share anything that could put someone at risk.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="page" data-page="about" hidden>
+  <div class="wrap">
+    <div class="page-head">
+      <span class="label">About and contact</span>
+      <h1>Independent by design</h1>
+      <p class="lede">Defence Claims Check belongs to no army, ministry, party or government. It is a sample you can study and adapt.</p>
+    </div>
+
+    <div class="grid-2" style="align-items:start">
+      <div class="prose">
+        <h2 style="margin-top:0">What this site is</h2>
+        <p>A working example of a multi-page fact-checking site: a searchable archive with verdict filters, a published method, a message analyser, a quiz and a claim form.</p>
+        <h2>What it is not</h2>
+        <ul class="ticks">
+          <li>It is not a real fact-checker. No verdict here applies to a real event, person or organisation.</li>
+          <li>It does not use any official name, emblem or uniform imagery.</li>
+          <li>It does not receive submissions. The form never leaves your browser.</li>
+        </ul>
+        <h2>Making it yours</h2>
+        <ul class="ticks">
+          <li>Rename the site and replace the sample checks with your own sourced work.</li>
+          <li>Write your own method, verdict definitions and corrections policy.</li>
+          <li>Publish under your own name and domain. If you represent an official body, publish from that body's own verified domain so readers can trust where it comes from.</li>
+        </ul>
+      </div>
+
+      <div class="prose">
+        <h2 style="margin-top:0">Contact</h2>
+        <p class="muted">These are placeholder addresses on the reserved example.org domain. They do not receive mail.</p>
+        <div>
+          <div class="addr"><div><div class="label">Tips and claims</div><span class="mono" id="a1">tips@example.org</span></div><button class="btn ghost small" type="button" data-copy="a1">Copy</button></div>
+          <div class="addr"><div><div class="label">Corrections</div><span class="mono" id="a2">corrections@example.org</span></div><button class="btn ghost small" type="button" data-copy="a2">Copy</button></div>
+          <div class="addr"><div><div class="label">Press</div><span class="mono" id="a3">press@example.org</span></div><button class="btn ghost small" type="button" data-copy="a3">Copy</button></div>
+        </div>
+        <p class="status" id="copy-status" role="status"></p>
+        <h2>Looking for an official statement?</h2>
+        <p>Go to the organisation's own website or its verified channels. Do not rely on this site, or on any page that only looks official, to tell you what an official body said.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <p>Defence Claims Check is an independent sample site. It is not affiliated with, endorsed by or speaking for any army, ministry or government body. All fact-checks shown are invented demo content.</p>
+    <ul>
+      <li><a href="#home" data-go="home">Home</a></li>
+      <li><a href="#archive" data-go="archive">Archive</a></li>
+      <li><a href="#verify" data-go="verify">How we verify</a></li>
+      <li><a href="#spot" data-go="spot">Spot fake claims</a></li>
+      <li><a href="#submit" data-go="submit">Submit a claim</a></li>
+      <li><a href="#about" data-go="about">About</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script>
+(function(){
+'use strict';
+var $=function(s,r){return (r||document).querySelector(s)};
+var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+var esc=function(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var fmtDate=function(d){return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})};
+var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+var VERDICT={
+  false:{label:'False',glyph:'✕'},
+  misleading:{label:'Misleading',glyph:'~'},
+  verified:{label:'Verified',glyph:'✓'},
+  unproven:{label:'Unproven',glyph:'?'}
+};
+var ORDER=['false','misleading','verified','unproven'];
+function stamp(v,small){return '<span class="stamp v-'+v+(small?' sm':'')+'"><span aria-hidden="true">'+VERDICT[v].glyph+'</span> '+VERDICT[v].label+'</span>'}
+function caseNo(c){return 'DCC-S-'+String(c.id).padStart(4,'0')}
+
+/* ---------- Sample data (all invented) ---------- */
+var CHECKS=[
+{id:1,date:'2026-09-03',verdict:'verified',topic:'Personnel',platform:'Press briefing and website notice',reach:'Not applicable',
+ claim:'The Halvern Defence Force will recruit 3,000 new personnel in the Spring Intake, with applications open until 30 November.',
+ fact:'Confirmed. The intake figure and the closing date match the recruitment notice on the Defence Office site and the recorded press briefing of 2 September.',
+ steps:['Found the recruitment notice on the Defence Office site and saved a dated copy.','Matched the figure against the briefing recording at 14:10.','Checked that the application portal shows the same closing date.'],
+ sources:['Recruitment notice RN-26/09','Press briefing recording, 2 September']},
+{id:2,date:'2026-09-08',verdict:'false',topic:'Operations',platform:'Messaging app forward',reach:'About 38,000 forwards',
+ claim:'ALERT: Pell Gate border crossing sealed from tonight. Indefinite lockdown. Stock up and forward to everyone you know.',
+ fact:'No closure order exists. The crossing kept its normal hours, and the forwarded text reuses wording from a 2021 chain message about a different crossing.',
+ steps:['Asked the Transit Authority for any closure order for Pell Gate. None had been issued.','Checked the crossing’s live timetable and two traveller reports from that night.','Searched the message text and found the same wording in a 2021 hoax about another crossing.'],
+ sources:['Transit Authority reply, 9 September','Crossing timetable archive','Reader reports (anonymised)']},
+{id:3,date:'2026-09-12',verdict:'misleading',topic:'Equipment',platform:'Social media post',reach:'About 120,000 views',
+ claim:'Photo shows Halvern’s brand-new stealth jet, delivered in secret last week.',
+ fact:'The aircraft in the photo is a one-fifth scale display model shown at the Marrow Aerospace Expo. A visible expo banner was cropped out of the shared version.',
+ steps:['A reverse image search found the uncropped original in the expo organiser’s gallery.','Compared the landing gear and canopy with the model’s published spec sheet.','The expo press office confirmed the model was on display on 5 September.'],
+ sources:['Expo gallery, hall B','Model spec sheet','Expo press office reply']},
+{id:4,date:'2026-09-17',verdict:'false',topic:'Policy and budget',platform:'Screenshot of a letter',reach:'About 22,000 shares',
+ claim:'Leaked letter: the Defence Office has ordered the closure of Harlow Training Academy from January.',
+ fact:'The letter is forged. The ministry name is misspelled in the letterhead, the reference number does not follow the published scheme, and no such order appears on the official notices page.',
+ steps:['Compared the letterhead with three genuine notices. The logo and typeface differ.','Checked the reference number against the published numbering scheme.','The Academy confirmed it received no closure notice.'],
+ sources:['Official notices page, archived 18 September','Academy statement']},
+{id:5,date:'2026-09-21',verdict:'misleading',topic:'Operations',platform:'Video clip',reach:'About 210,000 views',
+ claim:'A regional commander says “we will answer any threat with force.” Halvern is preparing to attack.',
+ fact:'The nine-second clip is cut from a 41-minute speech about flood defence. The full sentence refers to answering threats to the valley “with force of numbers: volunteers, engineers and boats.”',
+ steps:['Located the full speech on the regional council’s channel.','Timed the clip to minute 27 of the recording.','Read the transcript around the quoted sentence.'],
+ sources:['Full speech recording','Council transcript']},
+{id:6,date:'2026-09-25',verdict:'false',topic:'Equipment',platform:'Photo post',reach:'About 64,000 views',
+ claim:'Fuel crisis: army trucks stranded on the highway as depots run dry.',
+ fact:'The photo is from 2018 flood relief, when a convoy waited for a bridge to reopen. The metadata and the river level match that event, not this month.',
+ steps:['Reverse image search returned the same photo on a 2018 news page.','Read the file metadata of the earliest copy.','Checked depot opening notices for September. Normal operations.'],
+ sources:['2018 flood relief gallery','Depot notices, September']},
+{id:7,date:'2026-09-29',verdict:'unproven',topic:'Policy and budget',platform:'Anonymous forum post',reach:'About 9,000 views',
+ claim:'A leaked memo shows ration allowances will be cut by 15% next year.',
+ fact:'We could not confirm or rule this out. The memo has no verifiable origin, the Defence Office has not commented, and no matching budget line has been published. We will update this check when the budget papers are released.',
+ steps:['Looked for the memo’s reference number in public records. None found.','Asked the Defence Office for comment. No reply by publication.','Checked the draft budget summary. No ration line yet.'],
+ sources:['Draft budget summary','Request to Defence Office, 30 September']},
+{id:8,date:'2026-10-03',verdict:'false',topic:'Media and imagery',platform:'Image post',reach:'About 85,000 views',
+ claim:'Photo shows Halvern soldiers surrendering at the northern pass.',
+ fact:'The image was generated by software. Hands show extra fingers, badges are garbled and background shapes repeat. No agency or outlet published an original.',
+ steps:['Zoomed into hands, badges and signs for generation artefacts.','Searched for earlier copies. The earliest was posted by an art account that labelled it as generated.','Asked two photo agencies. Neither holds the image.'],
+ sources:['Earliest copy, art account','Photo agency replies']},
+{id:9,date:'2026-10-06',verdict:'verified',topic:'Operations',platform:'Official notice',reach:'Not applicable',
+ claim:'Training exercise Cold Harbour will close Coastal Road C-12 to civilians on Saturday.',
+ fact:'Confirmed. The closure, the hours and the alternative route match the notice published by the Regional Transport Office on 5 October.',
+ steps:['Found the notice on the Regional Transport Office site.','Called the office to confirm it issued the notice.','Checked the alternative route shown on the signage plan.'],
+ sources:['Regional Transport Office notice, 5 October','Signage plan']},
+{id:10,date:'2026-10-09',verdict:'misleading',topic:'Policy and budget',platform:'Chart on social media',reach:'About 47,000 views',
+ claim:'Defence spending doubled in five years. (Bar chart attached.)',
+ fact:'The first bar is the 2021 figure without equipment grants and the last bar includes them. Like for like, spending rose about 11% (sample figure).',
+ steps:['Rebuilt the chart from the published budget tables.','Found that the first and last bars use different categories.','Recomputed the change using matching categories.'],
+ sources:['Budget tables 2021 and 2026','Our recalculation sheet']},
+{id:11,date:'2026-10-13',verdict:'false',topic:'Personnel',platform:'Messaging app forward',reach:'About 15,000 forwards',
+ claim:'Pension payments halted for all veterans this month. Banks have been told to stop transfers.',
+ fact:'Payments were not halted. A two-hour fault in the pension portal on 12 October showed error messages, and transfers ran as scheduled that evening.',
+ steps:['Asked the Pension Office whether any stop order existed. None.','Collected three veterans’ payment confirmations dated 12 and 13 October.','Matched the portal fault to the office’s incident notice.'],
+ sources:['Pension Office incident notice','Payment confirmations (shared with consent)']},
+{id:12,date:'2026-10-16',verdict:'unproven',topic:'Operations',platform:'Anonymous account',reach:'About 31,000 views',
+ claim:'A drone unit has been secretly moved to the northern ridge.',
+ fact:'We could not verify this. Satellite images from 10 to 14 October are partly cloud-covered, the Defence Office does not comment on unit locations, and the account has no track record we could check.',
+ steps:['Reviewed available satellite passes for the ridge. Cloud cover on three of four.','Looked at the account’s history. Created two weeks ago.','Requested comment. Policy is not to comment on locations.'],
+ sources:['Satellite pass log','Account history capture']}
+];
+var byId=function(id){return CHECKS.filter(function(c){return c.id===id})[0]};
+var sorted=function(dir){return CHECKS.slice().sort(function(a,b){return dir==='old'?(a.date.localeCompare(b.date)||a.id-b.id):(b.date.localeCompare(a.date)||b.id-a.id)})};
+
+/* ---------- Routing ---------- */
+var PAGES=['home','archive','verify','spot','submit','about'];
+var current=null;
+function go(page,opts){
+  opts=opts||{};
+  if(PAGES.indexOf(page)<0)page='home';
+  PAGES.forEach(function(p){$('[data-page="'+p+'"]').hidden=(p!==page)});
+  $$('[data-nav]').forEach(function(a){if(a.dataset.nav===page)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  current=page;
+  try{history.replaceState(null,'','#'+page)}catch(e){}
+  if(page==='home')startSpot();else stopSpot();
+  if(!opts.noScroll){
+    window.scrollTo(0,0);
+    var h=$('[data-page="'+page+'"] h1');
+    if(h){h.setAttribute('tabindex','-1');h.focus({preventScroll:true})}
+  }
+}
+document.addEventListener('click',function(e){
+  var a=e.target.closest('[data-go]');
+  if(!a)return;
+  e.preventDefault();
+  go(a.dataset.go);
+});
+window.addEventListener('hashchange',function(){go(location.hash.slice(1))});
+$('#skip').addEventListener('click',function(){$('#main').focus();$('#main').scrollIntoView()});
+
+/* ---------- Theme ---------- */
+function isDark(){
+  var t=document.documentElement.getAttribute('data-theme');
+  if(t)return t==='dark';
+  return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function themeLabel(){$('#theme-btn').textContent=isDark()?'Light mode':'Dark mode'}
+$('#theme-btn').addEventListener('click',function(){
+  document.documentElement.setAttribute('data-theme',isDark()?'light':'dark');
+  themeLabel();
+});
+themeLabel();
+
+/* ---------- Tabs helper ---------- */
+function initTabs(listEl){
+  var tabs=$$('[role="tab"]',listEl);
+  function select(tab,focus){
+    tabs.forEach(function(t){
+      var on=(t===tab);
+      t.setAttribute('aria-selected',on?'true':'false');
+      t.tabIndex=on?0:-1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden=!on;
+    });
+    if(focus)tab.focus();
+  }
+  tabs.forEach(function(t,i){
+    t.addEventListener('click',function(){select(t,false)});
+    t.addEventListener('keydown',function(e){
+      var vertical=listEl.getAttribute('aria-orientation')==='vertical';
+      var next=vertical?'ArrowDown':'ArrowRight',prev=vertical?'ArrowUp':'ArrowLeft';
+      if(e.key===next){e.preventDefault();select(tabs[(i+1)%tabs.length],true)}
+      else if(e.key===prev){e.preventDefault();select(tabs[(i-1+tabs.length)%tabs.length],true)}
+      else if(e.key==='Home'){e.preventDefault();select(tabs[0],true)}
+      else if(e.key==='End'){e.preventDefault();select(tabs[tabs.length-1],true)}
+    });
+  });
+}
+initTabs($('#steps'));
+initTabs($('#spot-tabs'));
+
+/* ---------- Home: spotlight ---------- */
+var SPOT=[2,3,8,5,10];
+var spotIdx=0,spotTimer=null,spotPaused=reduced,spotHover=false;
+(function buildSpot(){
+  $('#slides').innerHTML=SPOT.map(function(id,i){
+    var c=byId(id);
+    return '<div class="slide v-'+c.verdict+(i===0?' on':'')+'" role="group" aria-roledescription="slide" aria-label="'+(i+1)+' of '+SPOT.length+'">'+
+      '<div class="sbox claim"><div class="row"><span class="label">The claim</span><span class="mono muted">'+esc(c.platform)+'</span></div><q>'+esc(c.claim)+'</q></div>'+
+      '<div class="sbox fact"><div class="row"><span class="label">What we found</span>'+stamp(c.verdict)+'</div><p>'+esc(c.fact)+'</p></div>'+
+      '<div class="spot-foot"><span class="mono muted">'+caseNo(c)+' · sample</span><button class="btn small" type="button" data-open="'+c.id+'">Read the full check</button></div>'+
+      '</div>';
+  }).join('');
+  $('#dots').innerHTML=SPOT.map(function(id,i){return '<button type="button" data-dot="'+i+'" aria-label="Show check '+(i+1)+'" aria-current="'+(i===0)+'"></button>'}).join('');
+})();
+function showSpot(i){
+  spotIdx=(i+SPOT.length)%SPOT.length;
+  $$('.slide').forEach(function(s,k){s.classList.toggle('on',k===spotIdx)});
+  $$('#dots button').forEach(function(b,k){b.setAttribute('aria-current',String(k===spotIdx))});
+  $('#spot-count').textContent=(spotIdx+1)+' of '+SPOT.length;
+}
+function startSpot(){stopSpot();spotTimer=setInterval(function(){if(!spotPaused&&!spotHover)showSpot(spotIdx+1)},7000)}
+function stopSpot(){if(spotTimer){clearInterval(spotTimer);spotTimer=null}}
+function syncPause(){
+  var b=$('#spot-pause');
+  b.textContent=spotPaused?'Play':'Pause';
+  b.setAttribute('aria-pressed',String(spotPaused));
+  $('#slides').setAttribute('aria-live',spotPaused?'polite':'off');
+}
+syncPause();
+$('#spot-prev').addEventListener('click',function(){showSpot(spotIdx-1)});
+$('#spot-next').addEventListener('click',function(){showSpot(spotIdx+1)});
+$('#spot-pause').addEventListener('click',function(){spotPaused=!spotPaused;syncPause()});
+$('#dots').addEventListener('click',function(e){var b=e.target.closest('[data-dot]');if(b)showSpot(+b.dataset.dot)});
+var sp=$('#spotlight');
+sp.addEventListener('mouseenter',function(){spotHover=true});
+sp.addEventListener('mouseleave',function(){spotHover=false});
+sp.addEventListener('focusin',function(){spotHover=true});
+sp.addEventListener('focusout',function(){spotHover=false});
+
+/* ---------- Home: stats and latest ---------- */
+(function buildStats(){
+  var counts={};ORDER.forEach(function(v){counts[v]=CHECKS.filter(function(c){return c.verdict===v}).length});
+  $('#glance-sub').textContent=CHECKS.length+' invented checks. Select a verdict to filter the archive.';
+  $('#verdict-bar').innerHTML=ORDER.map(function(v){return '<span class="v-'+v+'" style="flex:'+counts[v]+' 1 0" title="'+VERDICT[v].label+': '+counts[v]+'"></span>'}).join('');
+  $('#legend').innerHTML=ORDER.map(function(v){return '<button type="button" class="v-'+v+'" data-verdict="'+v+'"><span class="dot"></span><span class="lt">'+VERDICT[v].label+'</span><span class="n">'+counts[v]+'</span></button>'}).join('');
+  $('#latest').innerHTML=sorted('new').slice(0,4).map(function(c){
+    return '<li><button type="button" data-open="'+c.id+'"><span class="mono muted when">'+fmtDate(c.date)+'</span><span class="t">'+esc(c.claim)+'</span>'+stamp(c.verdict,true)+'</button></li>';
+  }).join('');
+})();
+$('#legend').addEventListener('click',function(e){
+  var b=e.target.closest('[data-verdict]');if(!b)return;
+  state.verdict=b.dataset.verdict;state.q='';state.topic='all';
+  syncControls();go('archive');renderArchive();
+});
+
+/* ---------- Archive ---------- */
+var state={q:'',verdict:'all',topic:'all',sort:'new'};
+var openSet={};
+var TOPICS=[];CHECKS.forEach(function(c){if(TOPICS.indexOf(c.topic)<0)TOPICS.push(c.topic)});TOPICS.sort();
+$('#topic').innerHTML='<option value="all">All topics</option>'+TOPICS.map(function(t){return '<option>'+esc(t)+'</option>'}).join('');
+(function buildChips(){
+  var html='<button type="button" class="chip" data-v="all" aria-pressed="true">All <span class="n">'+CHECKS.length+'</span></button>';
+  ORDER.forEach(function(v){
+    var n=CHECKS.filter(function(c){return c.verdict===v}).length;
+    html+='<button type="button" class="chip v-'+v+'" data-v="'+v+'" aria-pressed="false"><span class="sw"></span>'+VERDICT[v].label+' <span class="n">'+n+'</span></button>';
+  });
+  $('#chips').innerHTML=html;
+})();
+function syncControls(){
+  $('#q').value=state.q;$('#topic').value=state.topic;$('#sort').value=state.sort;
+  $$('#chips .chip').forEach(function(c){c.setAttribute('aria-pressed',String(c.dataset.v===state.verdict))});
+}
+function hilite(text,q){
+  if(!q)return esc(text);
+  var re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
+  return text.split(re).map(function(p,i){return i%2?'<mark class="hit">'+esc(p)+'</mark>':esc(p)}).join('');
+}
+function filtered(){
+  var q=state.q.trim().toLowerCase();
+  return sorted(state.sort).filter(function(c){
+    if(state.verdict!=='all'&&c.verdict!==state.verdict)return false;
+    if(state.topic!=='all'&&c.topic!==state.topic)return false;
+    if(q&&(c.claim+' '+c.fact+' '+c.topic+' '+caseNo(c)).toLowerCase().indexOf(q)<0)return false;
+    return true;
+  });
+}
+function renderArchive(){
+  var q=state.q.trim();
+  var rows=filtered();
+  $('#list').innerHTML=rows.map(function(c){
+    return '<details class="check v-'+c.verdict+'" id="check-'+c.id+'" data-id="'+c.id+'"'+(openSet[c.id]?' open':'')+'>'+
+      '<summary><div class="c-meta"><span class="mono">'+caseNo(c)+'</span><time datetime="'+c.date+'">'+fmtDate(c.date)+'</time><span>'+esc(c.topic)+'</span></div>'+stamp(c.verdict)+
+      '<p class="c-claim">'+hilite(c.claim,q)+'</p><span class="chev" aria-hidden="true"></span></summary>'+
+      '<div class="c-body"><div class="stack"><div><h4>What we found</h4><p>'+esc(c.fact)+'</p></div>'+
+      '<div><h4>How we checked</h4><ul>'+c.steps.map(function(s){return '<li>'+esc(s)+'</li>'}).join('')+'</ul></div></div>'+
+      '<div class="stack"><div><h4>Details</h4><dl><dt>Seen on</dt><dd>'+esc(c.platform)+'</dd><dt>Reach</dt><dd>'+esc(c.reach)+'</dd><dt>Topic</dt><dd>'+esc(c.topic)+'</dd></dl></div>'+
+      '<div><h4>Sources consulted</h4><ul>'+c.sources.map(function(s){return '<li>'+esc(s)+'</li>'}).join('')+'</ul></div></div>'+
+      '<p class="sample-note">Sample content. This claim, these sources and this verdict are invented for demonstration.</p></div></details>';
+  }).join('');
+  $('#empty').hidden=rows.length>0;
+  $('#count').textContent=rows.length===CHECKS.length?'Showing all '+rows.length+' checks':'Showing '+rows.length+' of '+CHECKS.length+' checks';
+  $('#clear').hidden=!(q||state.verdict!=='all'||state.topic!=='all');
+}
+$('#list').addEventListener('toggle',function(e){
+  var d=e.target;if(!d.dataset||!d.dataset.id)return;
+  if(d.open)openSet[d.dataset.id]=true;else delete openSet[d.dataset.id];
+},true);
+$('#q').addEventListener('input',function(e){state.q=e.target.value;renderArchive()});
+$('#topic').addEventListener('change',function(e){state.topic=e.target.value;renderArchive()});
+$('#sort').addEventListener('change',function(e){state.sort=e.target.value;renderArchive()});
+$('#chips').addEventListener('click',function(e){
+  var b=e.target.closest('.chip');if(!b)return;
+  state.verdict=b.dataset.v;syncControls();renderArchive();
+});
+function clearFilters(){state.q='';state.verdict='all';state.topic='all';syncControls();renderArchive()}
+$('#clear').addEventListener('click',clearFilters);
+$('#empty-clear').addEventListener('click',clearFilters);
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-open]');if(!b)return;
+  var id=+b.dataset.open;
+  state.q='';state.verdict='all';state.topic='all';openSet[id]=true;
+  syncControls();go('archive',{noScroll:true});renderArchive();
+  var el=document.getElementById('check-'+id);
+  if(el){el.scrollIntoView({block:'start'});var s=$('summary',el);if(s)s.focus({preventScroll:true})}
+});
+
+/* ---------- Spot: analyser ---------- */
+var EXAMPLES={
+  chain:'BREAKING!!! URGENT. My cousin’s friend works in the Ministry and CONFIRMED that all leave is cancelled and the Northern Brigade has been moved out tonight. Forward to 10 people before this gets deleted!!!',
+  notice:'Notice: Coastal Road C-12 will be closed to civilian traffic from 06:00 to 14:00 on Saturday 24 October 2026 for a scheduled training exercise. The alternative route is via Marrow Bridge. Details: https://example.org/notices/c12. Issued by the Regional Transport Office, 20 October 2026.'
+};
+var SIGNALS=[
+ {id:'chain',label:'Asks you to forward or share',why:'Hoaxes spread because the message does the work of recruiting you. Real notices rarely ask for a chain.',todo:'Do not forward. Find the original notice or statement first.',
+  test:function(t){var m=/(forward|share|send|pass)\s+(this\s+)?(message\s+)?(to|with|on to)\s+(\d+|everyone|all|your)|before\s+(it|this|they)\b[^.!?]{0,20}\b(deleted|removed|taken down|blocked)|share (this )?(now|widely)|spread the word/i.exec(t);return m&&m[0]}},
+ {id:'insider',label:'Relies on an unnamed insider',why:'“A friend who works there” cannot be checked, and the story gets stronger with every retelling.',todo:'Ask who said it, when, and where it was first published.',
+  test:function(t){var m=/(my|a|his|her)\s+(cousin|friend|uncle|aunt|brother|sister|relative|neighbou?r|colleague)(’s|'s)?(\s+\w+){0,3}\s+(works?|working|is working)\b|\binsider\b|sources?\s+(say|says|told|confirm|confirmed|close)|\bleaked\b|inside (information|source)/i.exec(t);return m&&m[0]}},
+ {id:'alarm',label:'Uses alarm words',why:'Words such as “breaking” or “exposed” are meant to trigger a reaction before you think.',todo:'Look for the plain facts: who, what, where, when.',
+  test:function(t){var m=/\b(breaking|shocking|exposed|bombshell|mega|massive|you won.t believe|they don.t want you to know|big news|must watch|exclusive)\b/i.exec(t);return m&&m[0]}},
+ {id:'caps',label:'Shouts in capital letters',why:'Heavy capitals signal emotion, not evidence.',todo:'Read it again in normal case and see what is left.',
+  test:function(t){var w=t.match(/\b[A-Z]{4,}\b/g)||[];var letters=t.replace(/[^A-Za-z]/g,'');var up=letters.replace(/[^A-Z]/g,'').length;if(w.length>=3||(letters.length>=25&&up/letters.length>=0.3))return w.slice(0,4).join(', ')||'many capitals';return null}},
+ {id:'bang',label:'Piles on exclamation marks',why:'Three or more exclamation marks usually mean the writer wants a feeling from you.',todo:'Ignore the tone and check the content.',
+  test:function(t){var n=(t.match(/!/g)||[]).length;return n>=3?n+' exclamation marks':null}},
+ {id:'rush',label:'Creates time pressure',why:'Urgency stops you from checking. Hoaxes hurry you because checking would end them.',todo:'Take ten minutes. A real emergency will still be real.',
+  test:function(t){var m=/\b(tonight|immediately|right now|asap|urgent(ly)?|within\s+\d+\s*(hours?|minutes?)|next\s+\d+\s*hours?|\d+\s*hours?\s+(left|remaining))\b/i.exec(t);return m&&m[0]}},
+ {id:'numbers',label:'Gives exact numbers with no source',why:'A precise figure looks credible. Without a source it is just decoration.',todo:'Ask where the number comes from and who counted.',
+  test:function(t,src){if(src)return null;var m=/\b\d[\d,.]*\s*(k|thousand|lakh|crore|million)?\s*(soldiers|troops|personnel|killed|dead|injured|casualties|civilians|percent|%)/i.exec(t);return m&&m[0]}},
+ {id:'nosource',label:'Names no traceable source',why:'No link, no issuing office, no date. Nothing here can be checked.',todo:'Search for the notice, statement or recording the message claims to quote.',
+  test:function(t,src){return src?null:'no link, issuer or date found'}},
+ {id:'outrage',label:'Pushes anger or blame',why:'Messages built to anger travel further than messages built to inform.',todo:'Ask who benefits if you share it angry.',
+  test:function(t){var m=/\b(traitors?|cowards?|betray(ed|al)?|disgrace|shameful|massacre|slaughter(ed)?|wake up|share if you|enemy|they are lying|truth they hide)\b/i.exec(t);return m&&m[0]}}
+];
+function analyse(){
+  var t=$('#msg').value.trim();
+  var box=$('#analysis');
+  if(!t){box.innerHTML='<div class="card" style="padding:20px"><h3>Waiting for a message</h3><p class="muted" style="margin-top:6px">Paste text above or pick an example to see the warning signs.</p></div>';return}
+  var hasUrl=/(https?:\/\/|www\.)\S+/i.test(t);
+  var hasWords=/\b(according to|press release|statement|notice|issued by|reported by|published by|transcript|spokes(person|man|woman))\b/i.test(t);
+  var src=hasUrl||hasWords;
+  var found=[],clear=[];
+  SIGNALS.forEach(function(s){var r=s.test(t,src);if(r)found.push({s:s,hit:r});else clear.push(s)});
+  var n=found.length;
+  var lv=n>=4?{k:'false',t:'Many warning signs'}:n>=2?{k:'misleading',t:'Some warning signs'}:{k:'unproven',t:'Few warning signs'};
+  var html='<div class="level v-'+lv.k+'"><strong style="color:var(--vc)">'+lv.t+'</strong><span class="mono">'+n+' of '+SIGNALS.length+' found</span></div>';
+  html+='<div class="meter v-'+lv.k+'" aria-hidden="true">'+SIGNALS.map(function(_,i){return '<span'+(i<n?' class="f"':'')+'></span>'}).join('')+'</div>';
+  if(n){
+    html+='<ul class="sig-list">'+found.map(function(f){return '<li class="sig v-'+lv.k+'"><b>'+esc(f.s.label)+'</b><span class="found">Found: '+esc(f.hit)+'</span><span>'+esc(f.s.why)+'</span><span class="muted"><b>Do this:</b> '+esc(f.s.todo)+'</span></li>'}).join('')+'</ul>';
+  }else{
+    html+='<p>None of the nine warning signs showed up in this text.</p>';
+  }
+  if(clear.length)html+='<div><div class="label" style="margin-bottom:8px">Not found</div><div class="clear-list">'+clear.map(function(s){return '<span>'+esc(s.label)+'</span>'}).join('')+'</div></div>';
+  html+='<p class="caveat">Warning signs are not a verdict. A message can show none and still be false, and a true message can show several. Use this to decide what to check, then check it.</p>';
+  box.innerHTML=html;
+}
+$('#msg').addEventListener('input',analyse);
+$$('[data-example]').forEach(function(b){b.addEventListener('click',function(){
+  var k=b.dataset.example;$('#msg').value=k==='clear'?'':EXAMPLES[k];analyse();$('#msg').focus();
+})});
+$('#msg').value=EXAMPLES.chain;analyse();
+
+/* ---------- Spot: 7-step check ---------- */
+var STEPS=[
+ ['Pause','Notice how the message makes you feel. Strong anger or fear is a reason to slow down.'],
+ ['Find who posted it first','Open the account. Check how old it is and what else it posts. An account made two weeks ago is a warning sign.'],
+ ['Look for the primary source','Search for the notice, the full recording, the transcript or the statement the claim says it quotes.'],
+ ['Reverse-search the image or video','Search a photo or a video frame to find older copies. Many “new” photos are years old.'],
+ ['Check the date and the place','Do the weather, the signs and the landmarks fit the stated day and location?'],
+ ['Read or watch the whole thing','Clips and crops hide context. Look for the full speech or the uncropped picture.'],
+ ['Search whether others have checked it','Look for existing fact-checks and for the organisation’s own statement on its website.']
+];
+var done={};
+function renderChecklist(){
+  $('#checklist').innerHTML=STEPS.map(function(s,i){
+    return '<li><label for="cl'+i+'"><input type="checkbox" id="cl'+i+'" data-i="'+i+'"'+(done[i]?' checked':'')+'><span class="ct"><b>'+esc(s[0])+'</b><span>'+esc(s[1])+'</span></span></label></li>';
+  }).join('');
+  progress();
+}
+function progress(){
+  var n=Object.keys(done).length;
+  $('#cl-title').textContent=n+' of '+STEPS.length+' done';
+  $('#cl-fill').style.width=(n/STEPS.length*100)+'%';
+  $('#cl-msg').textContent=n===STEPS.length?'Now you can decide whether it is worth sharing.':(n?'Keep going.':'Tick each step as you do it.');
+}
+$('#checklist').addEventListener('change',function(e){
+  var i=e.target.dataset.i;if(i===undefined)return;
+  if(e.target.checked)done[i]=true;else delete done[i];
+  progress();
+});
+renderChecklist();
+
+/* ---------- Spot: quiz ---------- */
+var QUIZ=[
+ {q:'A message says “Forward to 10 people before it is deleted.” What is the best first move?',
+  o:['Forward it to warn your friends','Look for the original notice or statement','Reply to the sender and ask if it is true','Delete it and say nothing'],a:1,
+  e:'Hoaxes ask you to act before you check. Finding the original source is the step that can settle it. Asking the sender only gets you their copy of the same message.'},
+ {q:'A photo of burning vehicles is captioned as happening today. What is the quickest useful check?',
+  o:['Count the comments','Run a reverse image search','Check how many people shared it','Look at the caption’s spelling'],a:1,
+  e:'A reverse image search often shows that the same photo appeared years earlier in another place.'},
+ {q:'A nine-second clip shows an officer saying something alarming. What should you look for?',
+  o:['The full recording to see the context','More clips from the same account','A comment that explains it','Nothing, video does not lie'],a:0,
+  e:'Short clips can be cut from a longer speech with a different meaning. The full recording shows what came before and after.'},
+ {q:'A “leaked letter” has a different typeface in the signature and a misspelled ministry name. What does this suggest?',
+  o:['It is genuine, forgers are careful','It may be forged, so confirm with the issuing office','It is definitely false','It is true but badly typed'],a:1,
+  e:'These are warning signs, not proof. The next step is to compare it with genuine notices and ask the issuing office.'},
+ {q:'A fact-check rates a claim “Unproven”. What does that mean?',
+  o:['It is false','It is true','There is not enough evidence to confirm or reject it','It is only an opinion'],a:2,
+  e:'Unproven means the evidence is missing or inconclusive. A good check says what is missing and reopens when new evidence appears.'}
+];
+var qz={i:0,score:0,picked:null};
+function renderQuiz(){
+  var box=$('#quiz');
+  if(qz.i>=QUIZ.length){
+    var msg=qz.score===QUIZ.length?'Every answer right. You check before you share.':qz.score>=3?'A solid result. Review the ones you missed in the 7-step check.':'Worth another go. Start with the 7-step check, then retake the quiz.';
+    box.innerHTML='<span class="label">Quiz complete</span><h2>'+qz.score+' of '+QUIZ.length+' correct</h2><p>'+esc(msg)+'</p><div class="btn-row"><button class="btn" type="button" id="qz-again">Try again</button></div>';
+    $('#qz-again').addEventListener('click',function(){qz={i:0,score:0,picked:null};renderQuiz()});
+    return;
+  }
+  var q=QUIZ[qz.i],answered=qz.picked!==null;
+  var letters=['A','B','C','D'];
+  var html='<div class="level"><span class="label">Question '+(qz.i+1)+' of '+QUIZ.length+'</span><span class="mono muted">Score '+qz.score+'</span></div><h2 style="font-size:1.3rem;font-stretch:104%">'+esc(q.q)+'</h2><div class="opts">';
+  q.o.forEach(function(o,k){
+    var cls='opt';
+    if(answered){if(k===q.a)cls+=' right';else if(k===qz.picked)cls+=' wrong'}
+    html+='<button type="button" class="'+cls+'" data-k="'+k+'"'+(answered?' disabled':'')+'><span class="k">'+letters[k]+'</span><span>'+esc(o)+'</span></button>';
+  });
+  html+='</div>';
+  if(answered){
+    html+='<div class="explain" role="status"><b>'+(qz.picked===q.a?'Correct.':'Not quite.')+'</b><span>'+esc(q.e)+'</span></div><div class="btn-row"><button class="btn" type="button" id="qz-next">'+(qz.i===QUIZ.length-1?'See result':'Next question')+'</button></div>';
+  }
+  box.innerHTML=html;
+  if(answered){$('#qz-next').addEventListener('click',function(){qz.i++;qz.picked=null;renderQuiz()});$('#qz-next').focus()}
+}
+$('#quiz').addEventListener('click',function(e){
+  var b=e.target.closest('.opt');if(!b||qz.picked!==null)return;
+  qz.picked=+b.dataset.k;if(qz.picked===QUIZ[qz.i].a)qz.score++;renderQuiz();
+});
+renderQuiz();
+
+/* ---------- Copy helper ---------- */
+function copyText(text,statusEl){
+  function ok(){statusEl.textContent='Copied.'}
+  function fail(){
+    try{
+      var ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();var r=document.execCommand('copy');document.body.removeChild(ta);
+      statusEl.textContent=r?'Copied.':'Copy is not available here. Select the text and copy it yourself.';
+    }catch(e){statusEl.textContent='Copy is not available here. Select the text and copy it yourself.'}
+  }
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(ok,fail)}else fail();
+  }catch(e){fail()}
+}
+$$('[data-copy]').forEach(function(b){b.addEventListener('click',function(){
+  copyText(document.getElementById(b.dataset.copy).textContent,$('#copy-status'));
+})});
+
+/* ---------- Submit form ---------- */
+var lastReceipt='';
+function setErr(id,inputId,msg){
+  var e=document.getElementById(id),i=inputId?document.getElementById(inputId):null;
+  if(msg){e.textContent=msg;e.hidden=false;if(i)i.setAttribute('aria-invalid','true')}
+  else{e.textContent='';e.hidden=true;if(i)i.removeAttribute('aria-invalid')}
+}
+$('#claim-form').addEventListener('submit',function(e){
+  e.preventDefault();
+  var text=$('#claim-text').value.trim(),url=$('#claim-url'),mail=$('#claim-email');
+  var bad=[];
+  if(text.length<15){setErr('err-claim','claim-text','Write at least 15 characters so we can tell what the claim says.');bad.push('claim-text')}else setErr('err-claim','claim-text','');
+  if(url.value&&!url.checkValidity()){setErr('err-url','claim-url','Enter a full link that starts with https://');bad.push('claim-url')}else setErr('err-url','claim-url','');
+  if(mail.value&&!mail.checkValidity()){setErr('err-email','claim-email','Enter an email address like name@example.org, or leave it empty.');bad.push('claim-email')}else setErr('err-email','claim-email','');
+  if(!$('#claim-ack').checked){setErr('err-ack','claim-ack','Tick the box to confirm you understand nothing is sent.');bad.push('claim-ack')}else setErr('err-ack','claim-ack','');
+  if(bad.length){document.getElementById(bad[0]).focus();return}
+  var ticket='DCC-S-Q-'+(1000+Math.floor(Math.random()*9000));
+  var rows=[['Ticket',ticket],['Claim',text],['Seen on',$('#claim-where').value],['Date seen',$('#claim-date').value?fmtDate($('#claim-date').value):'Not given'],['Link',url.value||'None'],['Reply to',mail.value||'No reply requested'],['Status','Sample only. Not sent.']];
+  $('#receipt-dl').innerHTML=rows.map(function(r){return '<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>'}).join('');
+  lastReceipt=rows.map(function(r){return r[0]+': '+r[1]}).join('\n');
+  $('#claim-form').hidden=true;$('#receipt').hidden=false;$('#receipt-status').textContent='';
+  $('#receipt h2').setAttribute('tabindex','-1');$('#receipt h2').focus();
+});
+$('#receipt-copy').addEventListener('click',function(){copyText(lastReceipt,$('#receipt-status'))});
+$('#receipt-reset').addEventListener('click',function(){
+  $('#claim-form').reset();['err-claim','err-url','err-email','err-ack'].forEach(function(id){setErr(id,null,'')});
+  $$('[aria-invalid]',$('#claim-form')).forEach(function(i){i.removeAttribute('aria-invalid')});
+  $('#receipt').hidden=true;$('#claim-form').hidden=false;$('#claim-text').focus();
+});
+$('#submit-grid').style.gridTemplateColumns='';
+
+/* ---------- Boot ---------- */
+syncControls();renderArchive();
+go(location.hash.slice(1),{noScroll:true});
+})();
+</script>
